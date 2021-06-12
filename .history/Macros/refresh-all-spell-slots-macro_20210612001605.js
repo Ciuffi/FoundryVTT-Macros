@@ -9,5 +9,5 @@ Object.entries(p_actor.data.data.spells).forEach(([key, val]) => {
     }
 })
 
-p_actor.update({ 'data.spells': updateObj })
+p_actor.update(updateObj)
 ui.notifications.info("You feel empowered and refreshed.")
