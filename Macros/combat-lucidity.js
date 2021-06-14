@@ -3,20 +3,20 @@ const theContent = `
         <div>
             <button id="lucidity_button">Roll Lucidity</button>
         </div>
-        <div id="moveDiv" style="margin: 10px auto; display: none; justify-content: center; align-items: center;">
-            <h3>Movement</h3>
-            <button id="lucidMove">Roll Movement</button>
-            <h4 style="font-size: 18px; margin-top: 5px; text-align: center;" id="moveResult">You're moving...</h4>
+        <div id="spellDiv" style="margin: 10px auto; display: none; justify-content: center; align-items: center;">
+            <h3>Spell</h3>
+            <button id="lucidSpell">Roll Spell</button>
+            <h4 style="font-size: 18px; margin-top: 5px; text-align: center;" id="spellResult">You're casting...</h4>
         </div>
         <div id="targetDiv" style="margin: 10px auto; display: none; justify-content: center; align-items: center;">
             <h3>Target</h3>
             <button id="lucidTarget">Roll Target</button>
             <h4 style="font-size: 18px; margin-top: 5px; text-align: center;" id="targetResult">You're targetting...</h4>
         </div>
-        <div id="spellDiv" style="margin: 10px auto; display: none; justify-content: center; align-items: center;">
-            <h3>Spell</h3>
-            <button id="lucidSpell">Roll Spell</button>
-            <h4 style="font-size: 18px; margin-top: 5px; text-align: center;" id="spellResult">You're casting...</h4>
+        <div id="moveDiv" style="margin: 10px auto; display: none; justify-content: center; align-items: center;">
+            <h3>Movement</h3>
+            <button id="lucidMove">Roll Movement</button>
+            <h4 style="font-size: 18px; margin-top: 5px; text-align: center;" id="moveResult">You're moving...</h4>
         </div>
         <div style="margin: 30px auto; display: none; justify-content: center; align-items: center;" id="lucidityResultDiv">
             <h2 id="lucidityResult">Result</h2>
@@ -27,15 +27,15 @@ const theContent = `
         <div id="lucidEffect" style="display: none;"></div>
     </div>
     `
-
+let currEffect;
 let message;
-
 const hideAllDivs = (html) => {
     html.find("div#moveDiv")[0].style.display = "none"
     html.find("div#targetDiv")[0].style.display = "none"
     html.find("div#spellDiv")[0].style.display = "none"
     html.find("div#lucidityResultDiv")[0].style.display = "none"
     message = "<div>"
+    currEffect = undefined;
 }
 
 const showResult = async (html, res) => {
@@ -60,14 +60,16 @@ const showRolls = async (html, effect) => {
     html.find("div#lucidEffect")[0].innerText = effect
     switch (effect) {
         case "Lucid":
+            showResult(html, "Double the spells, no slots. Fire Away.")
+            break;
         case "Smart":
             showResult(html, "Full Control")
             break;
         case "Average":
-            showMovement(html)
+            showSpellDiv(html)
             break;
         case "below average":
-            showMovement(html)
+            showSpellDiv(html)
             showTargetDiv(html)
             break;
         case "Dumb":
@@ -95,10 +97,10 @@ const rollAll = async (html, ele) => {
         case "Smart":
             break;
         case "Average":
-            rollMovement(html, moveButton)
+            rollSpell(html, spellButton)
             break;
         case "below average":
-            rollMovement(html, moveButton)
+            rollSpell(html, spellButton)
             rollTarget(html, targetButton)
             break;
         case "Dumb":
@@ -117,6 +119,7 @@ const RollLucidity = async (html, ele) => {
     hideAllDivs(html)
     let m = game.macros.getName("Lucidity").data.command
     let res = await eval(m)
+    currEffect = res.effect
     ele.innerText = `Rolled a ${res.roll}. You feel ${res.effect}...`
     message += `Rolled a ${res.roll}. You feel ${res.effect}<br/>`
     showRolls(html, res.effect)
@@ -124,21 +127,33 @@ const RollLucidity = async (html, ele) => {
 }
 
 const rollMovement = async (html, ele) => {
-    const r = await new Roll('1d4').roll()
-    r.toMessage(null, { rollMode: 'gmroll' })
+    const r = await new Roll('1d8').roll()
+    await r.toMessage(null, { rollMode: 'gmroll' })
     let result;
     switch (r.total) {
         case 1:
-            result = 'West';
+            result = 'North';
             break;
         case 2:
-            result = 'East';
+            result = 'North East';
             break;
         case 3:
-            result = 'North'
+            result = 'East'
             break;
         case 4:
-            result = 'South'
+            result = 'South East'
+            break;
+        case 5:
+            result = "South"
+            break;
+        case 6:
+            result = "South West"
+            break;
+        case 7:
+            result = "West"
+            break;
+        case 8:
+            result = "North West"
             break;
     }
     html.find("h4#moveResult")[0].innerText = `You're moving... ${result}`
@@ -150,7 +165,7 @@ const rollTarget = async (html, ele) => {
     let targets = game.combat.data.combatants.map(c => c.actor.name)
     let targetSize = targets.length;
     const r = await new Roll(`1d${targetSize}`).roll()
-    r.toMessage(null, { rollMode: 'gmroll' })
+    await r.toMessage(null, { rollMode: 'gmroll' })
     let result = targets[r.total - 1]
     html.find("h4#targetResult")[0].innerText = `You're targetting... ${result}`
     ele.innerText = `Rolled a ${r.total}. You're targetting ${result}`
@@ -158,10 +173,37 @@ const rollTarget = async (html, ele) => {
 }
 
 const rollSpell = async (html, ele) => {
-    let spells = actor.items.filter(i => i.data.type === "spell").map(i => i.data.name)
+    let maxlevel = 0;
+    let minlevel = 0;
+    switch (currEffect) {
+        case "Lucid":
+        case "Smart":
+            maxlevel = 10;
+            break;
+        case "Average":
+            maxlevel = 2;
+            break;
+        case "below average":
+            maxlevel = 1;
+        case "dumb":
+            maxlevel = 0;
+            break;
+        case "CHAOTIC":
+            maxlevel = 10;
+            minlevel = 3;
+            break;
+        default:
+            maxlevel = 0;
+            break;
+    }
+    let spells = actor.items
+        .filter(i => i.data.type === "spell" &&
+            i.data.data.level <= maxlevel &&
+            i.data.data.level >= minlevel)
+        .map(i => i.data.name)
     let spellSize = spells.length;
     const r = await new Roll(`1d${spellSize}`).roll()
-    r.toMessage(null, { rollMode: 'gmroll' })
+    await r.toMessage(null, { rollMode: 'gmroll' })
     let result = spells[r.total - 1]
     html.find("h4#spellResult")[0].innerText = `You're casting... ${result}`
     ele.innerText = `Rolled a ${r.total}. You're casting ${result}`
@@ -186,6 +228,7 @@ new Dialog({
     content: theContent,
     render: async (html) => {
         message = "<div>"
+        currEffect = undefined;
         let lucidButton = html.find('button#lucidity_button')[0]
         let moveButton = html.find('button#lucidMove')[0]
         let targetButton = html.find('button#lucidTarget')[0]

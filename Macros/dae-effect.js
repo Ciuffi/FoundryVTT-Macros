@@ -59,6 +59,7 @@
     switch (true) {
         case r.total === 1:
             selectedEffect = effects[0]
+            break;
         case r.total < 5:
             selectedEffect = effects[1];
             break;
@@ -100,5 +101,5 @@
         `
     //Show the player and the GM the roll, no one else.
     r.toMessage({ content: HTMLContent, speaker: ChatMessage.getSpeaker({ token: actor }), user: game.user.id }, { rollMode: 'gmroll' })
-    return { roll: r.total, effect: selectedEffect }
+    return { roll: r.total, effect: selectedEffect.label }
 })()
